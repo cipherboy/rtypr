@@ -61,7 +61,7 @@ and files will be printed if any specified. The defaults are shown below:
                                    event.
                                    Currently: 0.02
 
-    --file, -f: Read text to retype from a file.
+    --file, -f <file>: Read text to retype from a file.
 
     --help, -h: Show this help text.
 
