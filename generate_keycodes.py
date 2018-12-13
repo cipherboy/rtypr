@@ -48,6 +48,7 @@ def main():
         "SLASH"
     ]
     assert len(special) == len(names_special)
+
     for i in range(0, len(special)):
         text = special[i]
         shifted = shifted_special[i]

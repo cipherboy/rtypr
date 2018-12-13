@@ -11,6 +11,8 @@ appropriate permissions (group: `input`).
 
 Other common utilities used are `grep` and `sleep`.
 
+If Unicode support is enabled, `iconv`, `xxd`, and `sed` will be expected.
+
 
 ## Usage
 
@@ -84,3 +86,14 @@ and files will be printed if any specified. The defaults are shown below:
     --stdin, -: Read text to retype from stdin.
 
     Note that when no input is given, this help message is printed.
+
+
+## Overview
+
+`rtypr` is a single bash script, `rtypr.sh` in this repo. The included python
+script, `generate_keycodes.py`, generates the series of `elif` statements to
+convert characters to keycodes. This code could be reused by others if
+desired, to convert characters to keycodes if desired. Each character is an
+element of the `keys` array and is a 3-tuple of `(character, name, shifted)`,
+where `name` is the name of the key without the `KEY_` prefix, and shifted
+is a boolean of whether or not the shift key modifier is required.
