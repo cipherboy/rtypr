@@ -138,6 +138,8 @@ function rtypr() {
     function __char_to_keys() {
         if [ "x$1" == "x " ]; then
             __key_press "KEY_SPACE"
+        elif [ "x$1" == "x	"]; then
+            __key_press "KEY_TAB"
         elif [ "x$1" == "x
 " ]; then
             __key_press "KEY_ENTER"
