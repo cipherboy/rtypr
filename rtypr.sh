@@ -5,14 +5,23 @@ function rtypr() {
     # Input event device to simulate events on.
     local input_device=""
 
+    # Try to automatically detect the keyboard device. Even if all 100 input
+    # events exist and aren't keyboards, this won't take that long as the
+    # underling command and APIs seem fast enough.
     function __detect_input_device() {
+        # 100 is an admittedly arbitrary bound.
         for index in `seq 0 100`; do
             device_path="/dev/input/event$index"
 
+            # If the device path doesn't exist (since they are sequentially
+            # numbered), we can return early.
             if [ ! -e "$device_path" ]; then
                 return 1
             fi
 
+            # We're looking for something that looks like a keyboard. Some
+            # keyboards will show up multiple times, but this is a best-guess
+            # effort, not science.
             if evemu-describe "$device_path" | grep -q -i 'keyboard'; then
                 input_device="$device_path"
                 return 0
@@ -44,20 +53,30 @@ function rtypr() {
     # Text to type.
     local text=()
 
+    # Function to simulate pressing a key, given a key code as $1.
     function __key_down() {
         evemu-event "$input_device" --type EV_KEY --code "$1" --value 1 --sync
     }
 
+    # Function to simulate unpressing a key, given a key code on $1.
     function __key_up() {
         evemu-event "$input_device" --type EV_KEY --code "$1" --value 0 --sync
     }
 
+    # Function to simulate pressing and releasing a key, given a key code on
+    # $1. This handles the bounce pause to ensure that the key is registered.
     function __key_press() {
         __key_down "$1"
         sleep "$bounce_pause"
         __key_up "$1"
     }
 
+    # Function to simulate pressing shift and a key, given a key code on $1.
+    # This handles the modifier pauses at several stages. Having a modifier
+    # pause before AND after ensures that the entire sequence will be
+    # detected correctly when multiple shifted sequences are used in a row.
+    # Otherwise, shift up from the previous sequence tends to interfere with
+    # shift down from the next...
     function __key_shifted_press() {
         sleep "$modifier_pause"
         __key_down "KEY_$shift_key"
@@ -68,7 +87,11 @@ function rtypr() {
         sleep "$modifier_pause"
     }
 
+    # Complex shortcut to enable unicode typing on Linux. This is simply
+    # LEFTCTRL+LEFTSHIFT+U, but with extra pauses to ensure it is detected
+    # as a unit and doesn't interfere with typing the UTF32 hex code.
     function __key_unicode_shortcut() {
+        sleep "$modifier_pause"
         __key_down "KEY_LEFTCTRL"
         sleep "$modifier_pause"
         __key_down "KEY_LEFTSHIFT"
@@ -84,22 +107,34 @@ function rtypr() {
         sleep "$modifier_pause"
     }
 
-    function __can_print_unicode() {
+    # Detect whether or not we can type this character as unicode. For that
+    # to work, we'll have to have only a single UTF32 code point, which is 8
+    # hex characters. 9 with the newline that `wc -c` helpfully counts...
+    function __can_type_unicode() {
         local char="$1"
         local codepoint="$(echo -n "$char" | iconv --from=utf8 --to=utf32be | xxd -p | wc -c)"
 
         (( $codepoint <= 9 ))
     }
 
-    function __print_unicode() {
+    # Type the given character as a UTF32 code point. That is done via the
+    # unicode shortcut, LEFTCTRL+LEFTSHIFT+U, followed by the hex of the
+    # character.
+    function __type_unicode() {
         local char="$1"
-        local codepoint="$(echo -n "$char" | iconv --from=utf8 --to=utf32be | xxd -p)"
+
+        # Strip leading zeroes this time to save typing time. Most have at
+        # least three leading zeroes.
+        local codepoint="$(echo -n "$char" | iconv --from=utf8 --to=utf32be | sed 's/^0*//g' | xxd -p)"
 
         __key_unicode_shortcut
         __str_to_keys "$codepoint"
         __key_press "KEY_ENTER"
     }
 
+    # Lookup table for converting a character to a keypress. Two special cases
+    # not handled by generate_keycodes.py first and unicode and unknown
+    # character detection at the end.
     function __char_to_keys() {
         if [ "x$1" == "x " ]; then
             __key_press "KEY_SPACE"
@@ -302,8 +337,8 @@ function rtypr() {
             __key_press "KEY_SLASH"
         elif [ "x$1" == "x?" ]; then
             __key_shifted_press "KEY_SLASH"
-        elif __can_print_unicode "$1"; then
-            __print_unicode "$1"
+        elif __can_type_unicode "$1"; then
+            __type_unicode "$1"
         else
             echo "Unknown key for character: [$1]"
         fi
@@ -311,6 +346,8 @@ function rtypr() {
         sleep "$character_pause"
     }
 
+    # Type whole strings via iterating over each character and calling
+    # __char_to_keys on it.
     function __str_to_keys() {
         local str="$1"
         for char in $(seq 1 ${#str}); do
@@ -319,6 +356,8 @@ function rtypr() {
         done
     }
 
+    # Type from a file or stdin. Note that this is currently treated as one
+    # segment, so there is no segment pause at the end.
     function __from_file() {
         local path="$1"
         local contents=""
@@ -332,6 +371,8 @@ function rtypr() {
         __str_to_keys "$contents"
     }
 
+    # Type from the command line arguments. These are added to the `text`
+    # global variable.
     function __from_command_line() {
         local segment_count="${#text}"
 
@@ -341,12 +382,15 @@ function rtypr() {
 
             __str_to_keys "$segment"
 
+            # The command line can handle multiple segments, but don't pause
+            # after the last segment.
             if [ "$segment_index" != "$segment_count" ]; then
                 sleep "$segment_pause"
             fi
         done
     }
 
+    # Display help text.
     function __help() {
         echo "Usage: rtypr [options] [--] [<text>...]"
         echo ""
@@ -365,7 +409,7 @@ function rtypr() {
         echo "                               event."
         echo "                               Currently: $character_pause"
         echo ""
-        echo "--file, -f: Read text to retype from a file."
+        echo "--file, -f <file>: Read text to retype from a file."
         echo ""
         echo "--help, -h: Show this help text."
         echo ""
@@ -392,6 +436,8 @@ function rtypr() {
         echo "Note that when no input is given, this help message is printed."
     }
 
+    # Main entry point. Parses command line arguments and types the resulting
+    # text.
     function __main() {
         local seen_options_end="false"
         local show_help="false"
@@ -401,7 +447,12 @@ function rtypr() {
             local arg="$1"
             shift
 
+            # We tend to be generous in what we accept as an argument...
             if [ "x$arg" == "x" ]; then
+                # This main branch could be disabled at some point. It ensures
+                # that we ignore empty arguments and don't add them into the
+                # global `$text`, but is a result of lazy shifting / `seq`
+                # iteration. TODO: clean up argument iteration logic.
                 continue
             elif [ "x$arg" == "x--bounce-pause" ] ||
                     [ "x$arg" == "x-bounce-pause" ] ||
@@ -481,17 +532,21 @@ function rtypr() {
             show_help="true"
         fi
 
+        # Show help and exit.
         if [ "$show_help" == "true" ]; then
             __help
             return 0
         fi
 
+        # Note that we can't add the pre-typing pause here, else the
+        # cat from STDIN would appear to hang weirdly.
         if [ "x$file_path" != "x" ]; then
             __from_file "$file_path"
         else
             __from_command_line
         fi
 
+        # Slight pause in case rtypr is called in quick succession.
         sleep 0.1
     }
 
