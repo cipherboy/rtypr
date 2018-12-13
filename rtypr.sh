@@ -68,6 +68,38 @@ function rtypr() {
         sleep "$modifier_pause"
     }
 
+    function __key_unicode_shortcut() {
+        __key_down "KEY_LEFTCTRL"
+        sleep "$modifier_pause"
+        __key_down "KEY_LEFTSHIFT"
+        sleep "$modifier_pause"
+        __key_down "KEY_U"
+        sleep "$bounce_pause"
+        __key_up "KEY_U"
+        sleep "$modifier_pause"
+        __key_up "KEY_LEFTSHIFT"
+        sleep "$modifier_pause"
+        __key_up "KEY_LEFTCTRL"
+        sleep "$modifier_pause"
+        sleep "$modifier_pause"
+    }
+
+    function __can_print_unicode() {
+        local char="$1"
+        local codepoint="$(echo -n "$char" | iconv --from=utf8 --to=utf32be | xxd -p | wc -c)"
+
+        (( $codepoint <= 9 ))
+    }
+
+    function __print_unicode() {
+        local char="$1"
+        local codepoint="$(echo -n "$char" | iconv --from=utf8 --to=utf32be | xxd -p)"
+
+        __key_unicode_shortcut
+        __str_to_keys "$codepoint"
+        __key_press "KEY_ENTER"
+    }
+
     function __char_to_keys() {
         if [ "x$1" == "x " ]; then
             __key_press "KEY_SPACE"
@@ -269,6 +301,8 @@ function rtypr() {
             __key_press "KEY_SLASH"
         elif [ "x$1" == "x?" ]; then
             __key_shifted_press "KEY_SLASH"
+        elif __can_print_unicode "$1"; then
+            __print_unicode "$1"
         else
             echo "Unknown key for character: [$1]"
         fi
