@@ -22,7 +22,8 @@ function rtypr() {
             # We're looking for something that looks like a keyboard. Some
             # keyboards will show up multiple times, but this is a best-guess
             # effort, not science.
-            if evemu-describe "$device_path" | grep -q -i 'keyboard'; then
+            if evemu-describe "$device_path" 2>/dev/null |
+                    grep -q -i 'keyboard'; then
                 input_device="$device_path"
                 return 0
             fi
@@ -542,6 +543,18 @@ function rtypr() {
 
         # If we have no input, show the help.
         if [ "${#text}" == "0" ] && [ "x$file_path" == "x" ]; then
+            show_help="true"
+        fi
+
+        if [ "x$input_device" == "x" ]; then
+            echo "Error: empty input device. Please specify an input device." 1>&2
+            echo "Note that this usually occurs when the current user lacks" 1>&2
+            echo "permissions to interact with devices in /dev/input/ or" 1>&2
+            echo "the evemu package is not installed. To check if you have" 1>&2
+            echo "the necessary permissions, run:" 1>&2
+            echo "" 1>&2
+            echo "evemu-describe /dev/input/event0" 1>&2
+            echo ""
             show_help="true"
         fi
 
