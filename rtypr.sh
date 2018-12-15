@@ -50,6 +50,9 @@ function rtypr() {
     # Which shift key to use.
     local shift_key="LEFTSHIFT"
 
+    # Whether to try to type unicode.
+    local unicode="false"
+
     # Text to type.
     local text=()
 
@@ -114,7 +117,7 @@ function rtypr() {
         local char="$1"
         local codepoint="$(echo -n "$char" | iconv --from=utf8 --to=utf32be | xxd -p | wc -c)"
 
-        (( $codepoint <= 9 ))
+        [ "$unicode" == "true" ] && (( $codepoint <= 9 ))
     }
 
     # Type the given character as a UTF32 code point. That is done via the
@@ -138,7 +141,7 @@ function rtypr() {
     function __char_to_keys() {
         if [ "x$1" == "x " ]; then
             __key_press "KEY_SPACE"
-        elif [ "x$1" == "x	"]; then
+        elif [ "x$1" == "x	" ]; then
             __key_press "KEY_TAB"
         elif [ "x$1" == "x
 " ]; then
@@ -435,6 +438,10 @@ function rtypr() {
         echo ""
         echo "--stdin, -: Read text to retype from stdin."
         echo ""
+        echo "--unicode, -u: Enable typing Unicode characters via compose"
+        echo "               shortcut: LEFTCTRL+LEFTSHIFT+U."
+        echo "               Currently: $unicode"
+        echo ""
         echo "Note that when no input is given, this help message is printed."
     }
 
@@ -517,6 +524,10 @@ function rtypr() {
                     [ "x$arg" == "x-stdin" ] ||
                     [ "x$arg" == "x-" ]; then
                 file_path="-"
+            elif [ "x$arg" == "x--unicode" ] ||
+                    [ "x$arg" == "x-unicode" ] ||
+                    [ "x$arg" == "x-u" ]; then
+                unicode="true"
             elif [ "x$arg" == "x--" ]; then
                 break
             else
