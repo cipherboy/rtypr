@@ -116,7 +116,7 @@ function rtypr() {
     # hex characters. 9 with the newline that `wc -c` helpfully counts...
     function __can_type_unicode() {
         local char="$1"
-        local codepoint="$(echo -n "$char" | iconv --from=utf8 --to=utf32be | xxd -p | wc -c)"
+        local codepoint="$(iconv --from=utf8 --to=utf32be <<< "$char" | xxd -p | wc -c)"
 
         [ "$unicode" == "true" ] && (( $codepoint <= 9 ))
     }
@@ -129,7 +129,7 @@ function rtypr() {
 
         # Strip leading zeroes this time to save typing time. Most have at
         # least three leading zeroes.
-        local codepoint="$(echo -n "$char" | iconv --from=utf8 --to=utf32be | sed 's/^0*//g' | xxd -p)"
+        local codepoint="$(iconv --from=utf8 --to=utf32be <<< "$char" | sed 's/^0*//g' | xxd -p)"
 
         __key_unicode_shortcut
         __str_to_keys "$codepoint"
