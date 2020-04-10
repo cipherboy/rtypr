@@ -10,7 +10,7 @@ function rtypr() {
     # underling command and APIs seem fast enough.
     function __detect_input_device() {
         # 100 is an admittedly arbitrary bound.
-        for index in `seq 0 100`; do
+        for index in $(seq 0 100); do
             device_path="/dev/input/event$index"
 
             # If the device path doesn't exist (since they are sequentially
@@ -62,7 +62,7 @@ function rtypr() {
         evemu-event "$input_device" --type EV_KEY --code "$1" --value 1 --sync
     }
 
-    # Function to simulate unpressing a key, given a key code on $1.
+    # Function to simulate releasing a key, given a key code on $1.
     function __key_up() {
         evemu-event "$input_device" --type EV_KEY --code "$1" --value 0 --sync
     }
@@ -82,20 +82,17 @@ function rtypr() {
     # Otherwise, shift up from the previous sequence tends to interfere with
     # shift down from the next...
     function __key_shifted_press() {
-        sleep "$modifier_pause"
         __key_down "KEY_$shift_key"
         sleep "$modifier_pause"
         __key_press "$1"
         sleep "$modifier_pause"
         __key_up "KEY_$shift_key"
-        sleep "$modifier_pause"
     }
 
     # Complex shortcut to enable unicode typing on Linux. This is simply
     # LEFTCTRL+LEFTSHIFT+U, but with extra pauses to ensure it is detected
     # as a unit and doesn't interfere with typing the UTF32 hex code.
     function __key_unicode_shortcut() {
-        sleep "$modifier_pause"
         __key_down "KEY_LEFTCTRL"
         sleep "$modifier_pause"
         __key_down "KEY_LEFTSHIFT"
@@ -107,8 +104,7 @@ function rtypr() {
         __key_up "KEY_LEFTSHIFT"
         sleep "$modifier_pause"
         __key_up "KEY_LEFTCTRL"
-        sleep "$modifier_pause"
-        sleep "$modifier_pause"
+        sleep "$character_pause"
     }
 
     # Detect whether or not we can type this character as unicode. For that
@@ -118,7 +114,7 @@ function rtypr() {
         local char="$1"
         local codepoint="$(iconv --from=utf8 --to=utf32be <<< "$char" | xxd -p | wc -c)"
 
-        [ "$unicode" == "true" ] && (( $codepoint <= 9 ))
+        [ "$unicode" == "true" ] && (( codepoint <= 9 ))
     }
 
     # Type the given character as a UTF32 code point. That is done via the
@@ -343,6 +339,8 @@ function rtypr() {
             __key_press "KEY_SLASH"
         elif [ "x$1" == "x?" ]; then
             __key_shifted_press "KEY_SLASH"
+
+        # Not generated automatically
         elif __can_type_unicode "$1"; then
             __type_unicode "$1"
         else
@@ -449,11 +447,10 @@ function rtypr() {
     # Main entry point. Parses command line arguments and types the resulting
     # text.
     function __main() {
-        local seen_options_end="false"
         local show_help="false"
         local file_path=""
 
-        for arg_index in $(seq 1 "$#"); do
+        for _ in $(seq 1 "$#"); do
             local arg="$1"
             shift
 

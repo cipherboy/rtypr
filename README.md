@@ -1,13 +1,13 @@
 # `rtypr`
 
-`rtypr` is an interface over evemu to type text
+`rtypr` is an interface over `evemu` to type text.
 
 
 ## Dependencies
 
-This script relies on `evemu-device` and `evemu-event` being present in PATH.
-Additionally, it generally assumes root access and/or an account with
-appropriate permissions (group: `input`).
+This script relies on `evemu-device` and `evemu-event` being present in
+`PATH`. Additionally, it generally assumes root access and/or an account
+with appropriate permissions (group: `input`).
 
 Other common utilities used are `grep` and `sleep`.
 
@@ -92,8 +92,8 @@ and files will be printed if any specified. The defaults are shown below:
 
 `rtypr` is a single bash script, `rtypr.sh` in this repo. The included python
 script, `generate_keycodes.py`, generates the series of `elif` statements to
-convert characters to keycodes. This code could be reused by others if
-desired, to convert characters to keycodes if desired. Each character is an
+convert characters to key codes. This code could be reused by others if
+desired, to convert characters to key codes if desired. Each character is an
 element of the `keys` array and is a 3-tuple of `(character, name, shifted)`,
 where `name` is the name of the key without the `KEY_` prefix, and shifted
 is a boolean of whether or not the shift key modifier is required.
