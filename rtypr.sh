@@ -82,17 +82,20 @@ function rtypr() {
     # Otherwise, shift up from the previous sequence tends to interfere with
     # shift down from the next...
     function __key_shifted_press() {
+        sleep "$modifier_pause"
         __key_down "KEY_$shift_key"
         sleep "$modifier_pause"
         __key_press "$1"
         sleep "$modifier_pause"
         __key_up "KEY_$shift_key"
+        sleep "$modifier_pause"
     }
 
     # Complex shortcut to enable unicode typing on Linux. This is simply
     # LEFTCTRL+LEFTSHIFT+U, but with extra pauses to ensure it is detected
     # as a unit and doesn't interfere with typing the UTF32 hex code.
     function __key_unicode_shortcut() {
+        sleep "$modifier_pause"
         __key_down "KEY_LEFTCTRL"
         sleep "$modifier_pause"
         __key_down "KEY_LEFTSHIFT"
@@ -104,7 +107,8 @@ function rtypr() {
         __key_up "KEY_LEFTSHIFT"
         sleep "$modifier_pause"
         __key_up "KEY_LEFTCTRL"
-        sleep "$character_pause"
+        sleep "$modifier_pause"
+        sleep "$modifier_pause"
     }
 
     # Detect whether or not we can type this character as unicode. For that
@@ -344,7 +348,9 @@ function rtypr() {
         elif __can_type_unicode "$1"; then
             __type_unicode "$1"
         else
-            echo "Unknown key for character: [$1]"
+            local hex="$(xxd -p <<< "$1")"
+            local hex2="$(echo -n "$1" | xxd -p)"
+            echo "Unknown key for character: [$1] hex:[$hex] hex2:[$hex2]"
         fi
 
         sleep "$character_pause"
@@ -450,7 +456,7 @@ function rtypr() {
         local show_help="false"
         local file_path=""
 
-        for _ in $(seq 1 "$#"); do
+        while (( $# > 0 )); do
             local arg="$1"
             shift
 
